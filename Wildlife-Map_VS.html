@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>New Forest Wildlife Forecast</title>
+
+<meta charset="utf-8">
+
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+
+<style>
+
+body {
+    margin:0;
+    font-family:Arial;
+}
+
+
+h1 {
+    text-align:center;
+    margin:10px;
+}
+
+
+#controls {
+    text-align:center;
+    background:#eeeeee;
+    padding:10px;
+}
+
+
+#map {
+    height:80vh;
+}
+
+
+select {
+    padding:8px;
+    font-size:16px;
+}
+
+
+.legend {
+
+    background:white;
+    padding:12px;
+    border-radius:8px;
+    box-shadow:0 0 10px #777;
+    line-height:25px;
+
+}
+
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<h1>
+🦌 New Forest Wildlife Forecast
+</h1>
+
+
+<div id="controls">
+
+Show:
+
+<select id="speciesSelect">
+
+<option value="best">
+⭐ Best Wildlife Forecast
+</option>
+
+
+<option value="all">
+All Wildlife
+</option>
+
+
+</select>
+
+</div>
+
+
+
+<div id="map"></div>
+
+
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+
+
+<script>
+
+
+// ==========================
+// MAP
+// ==========================
+
+
+var map = L.map('map')
+.setView(
+    [50.85,-1.65],
+    12
+);
+
+
+
+L.tileLayer(
+
+'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+
+{
+attribution:'© OpenStreetMap'
+}
+
+).addTo(map);
+
+
+
+
+
+// ==========================
+// GOOGLE SHEET
+// ==========================
+
+
+var sheetURL =
+
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vS6n4ANxLsIFGhD07Pa5UDSFR120o0XBgqEiMsr2xN42_PlnWX50IGaN-UMz2oCZThU6GQaMe-_bHVj/pub?gid=1192205842&single=true&output=csv";
+
+
+
+
+
+
+
+// ==========================
+// STORAGE
+// ==========================
+
+
+var speciesLayers = {};
+
+var bestLayers = [];
+
+var allLayers = [];
+
+var locations = {};
+
+
+
+
+
+
+
+
+// ==========================
+// COLOUR FROM SCORE
+// ==========================
+
+
+function getColour(score){
+
+
+score = Number(score);
+
+
+
+if(score >= 80){
+
+return "#2ca25f";
+
+}
+
+
+else if(score >= 60){
+
+return "#fdd835";
+
+}
+
+
+else if(score >= 40){
+
+return "#fb8c00";
+
+}
+
+
+else{
+
+return "#d73027";
+
+}
+
+
+}
+
+
+
+
+
+
+
+// ==========================
+// CREATE ICON
+// ==========================
+
+
+function createWildlifeIcon(icon, colour){
+
+
+return L.divIcon({
+
+html:
+
+`
+
+<div style="
+
+background:${colour};
+
+width:42px;
+
+height:42px;
+
+border-radius:50%;
+
+display:flex;
+
+align-items:center;
+
+justify-content:center;
+
+font-size:25px;
+
+border:2px solid black;
+
+">
+
+${icon}
+
+</div>
+
+`,
+
+className:"",
+
+iconSize:[42,42]
+
+});
+
+
+}
+
+
+
+
+
+
+
+// ==========================
+// LOAD GOOGLE SHEET
+// ==========================
+
+
+Papa.parse(
+
+sheetURL,
+
+{
+
+
+download:true,
+
+header:true,
+
+
+complete:function(results){
+
+
+
+console.log(results.data);
+
+
+
+
+
+// Group locations
+
+
+results.data.forEach(function(row){
+
+
+
+if(!row.Latitude){
+return;
+}
+
+
+
+var location =
+row.Location.trim();
+
+
+
+if(!locations[location]){
+
+locations[location]=[];
+
+}
+
+
+locations[location].push(row);
+
+
+
+});
+
+
+
+
+
+
+// Find best species per location
+
+
+Object.keys(locations)
+
+.forEach(function(location){
+
+
+
+var best =
+
+locations[location]
+
+.reduce(function(previous,current){
+
+
+
+return Number(current["Total Score"])
+
+>
+
+Number(previous["Total Score"])
+
+?
+
+current
+
+:
+
+previous;
+
+
+
+});
+
+
+
+
+
+createMarker(best,bestLayers);
+
+
+
+});
+
+
+
+
+
+
+
+// Create species lists
+
+
+results.data.forEach(function(row){
+
+
+
+if(!row.Latitude){
+return;
+}
+
+
+
+var species=row.Species;
+
+
+
+if(!speciesLayers[species]){
+
+
+speciesLayers[species]=[];
+
+
+addSpeciesOption(species);
+
+
+}
+
+
+
+
+createMarker(row,speciesLayers[species]);
+
+
+
+});
+
+
+
+
+
+
+showBest();
+
+createLegend();
+
+
+
+}
+
+
+});
+
+
+
+
+
+
+
+
+
+// ==========================
+// CREATE MARKER
+// ==========================
+
+
+function createMarker(row,array){
+
+
+
+var score =
+
+Number(row["Total Score"]);
+
+
+
+
+
+var marker =
+
+L.marker(
+
+[
+
+Number(row.Latitude),
+
+Number(row.Longitude)
+
+],
+
+{
+
+
+icon:
+
+createWildlifeIcon(
+
+row.Icon,
+
+getColour(score)
+
+)
+
+
+}
+
+);
+
+
+
+
+
+marker.bindPopup(
+
+`
+
+<h3>
+${row.Location}
+</h3>
+
+
+<h2>
+${row.Icon} ${row.Species}
+</h2>
+
+
+<b>
+Viewing score:
+</b>
+
+${score}/100
+
+
+<br><br>
+
+
+<b>
+Forecast:
+</b>
+
+${row.Forecast}
+
+
+<br><br>
+
+
+🌡 ${row.Temperature}°C
+
+<br>
+
+💨 Wind:
+${row.Wind}
+
+
+<br>
+
+🌧 Rain:
+${row.Rain}
+
+
+<br><br>
+
+
+Season:
+${row.Season}
+
+
+`
+
+);
+
+
+
+
+array.push(marker);
+
+
+allLayers.push(marker);
+
+
+
+}
+
+
+
+
+
+
+
+
+
+// ==========================
+// DROPDOWN
+// ==========================
+
+
+function addSpeciesOption(species){
+
+
+
+var option =
+document.createElement("option");
+
+
+option.value=species;
+
+option.text=species;
+
+
+
+document.getElementById(
+"speciesSelect"
+)
+
+.appendChild(option);
+
+
+
+}
+
+
+
+
+
+document.getElementById(
+"speciesSelect"
+)
+
+.onchange=function(){
+
+
+showSpecies(this.value);
+
+
+};
+
+
+
+
+
+
+
+
+
+// ==========================
+// DISPLAY
+// ==========================
+
+
+function clearMap(){
+
+
+allLayers.forEach(function(marker){
+
+
+map.removeLayer(marker);
+
+
+});
+
+
+}
+
+
+
+
+
+function showSpecies(selected){
+
+
+
+clearMap();
+
+
+
+if(selected=="best"){
+
+
+
+bestLayers.forEach(function(marker){
+
+marker.addTo(map);
+
+});
+
+
+}
+
+
+
+else if(selected=="all"){
+
+
+
+allLayers.forEach(function(marker){
+
+marker.addTo(map);
+
+});
+
+
+}
+
+
+
+else{
+
+
+
+speciesLayers[selected]
+
+.forEach(function(marker){
+
+marker.addTo(map);
+
+});
+
+
+}
+
+
+
+}
+
+
+
+
+
+
+function showBest(){
+
+
+
+bestLayers.forEach(function(marker){
+
+
+marker.addTo(map);
+
+
+});
+
+
+}
+
+
+
+
+
+
+
+
+
+// ==========================
+// LEGEND
+// ==========================
+
+
+function createLegend(){
+
+
+
+var legend =
+
+L.control({
+
+position:"topright"
+
+});
+
+
+
+
+
+legend.onAdd=function(){
+
+
+
+var div =
+
+L.DomUtil.create(
+"div",
+"legend"
+);
+
+
+
+div.innerHTML =
+
+`
+
+<b>
+Chance of seeing
+</b>
+
+<br>
+
+🟢 Excellent (80+)
+
+<br>
+
+🟡 Good (60-79)
+
+<br>
+
+🟠 Possible (40-59)
+
+<br>
+
+🔴 Low (&lt;40)
+
+`;
+
+
+
+return div;
+
+
+
+};
+
+
+
+legend.addTo(map);
+
+
+
+}
+
+
+
+</script>
+
+
+</body>
+
+</html>
