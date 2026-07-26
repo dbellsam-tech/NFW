@@ -769,14 +769,10 @@ position:"topright"
 legend.onAdd=function(){
 
 
-
-var div =
-
-L.DomUtil.create(
+var div = L.DomUtil.create(
 "div",
 "legend"
 );
-
 
 
 div.innerHTML =
@@ -810,9 +806,12 @@ Wildlife Sightings Forecast
 `;
 
 
+return div;
+
+};
+
 
 legend.addTo(map);
-
 
 
 }
