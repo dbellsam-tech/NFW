@@ -169,40 +169,27 @@ var locations = {};
 // ==========================
 
 
-function getColour(score){
+function getColour(score) {
 
-
-score = Number(score);
-
-
-
-if(score >= 80){
-
-return "#2ca25f";
-
+if (score >= 80) {
+    return "green";
 }
 
-
-else if(score >= 60){
-
-return "#fdd835";
-
+else if (score >= 60) {
+    return "yellow";
 }
 
-
-else if(score >= 40){
-
-return "#fb8c00";
-
+else if (score >= 40) {
+    return "orange";
 }
 
-
-else{
-
-return "#d73027";
-
+else if (score >= 20) {
+    return "red";
 }
 
+else {
+    return "black";
+}
 
 }
 
@@ -349,11 +336,11 @@ locations[location]
 
 
 
-return Number(current["Total Score"])
+return Number(current["Wildlife Score"])
 
 >
 
-Number(previous["Total Score"])
+Number(previous["Wildlife Score"])
 
 ?
 
@@ -455,7 +442,7 @@ function createMarker(row,array){
 
 var score =
 
-Number(row["Total Score"]);
+Number(row["Wildlife Score"]);
 
 
 
@@ -510,10 +497,10 @@ ${row.Icon} ${row.Species}
 
 
 <b>
-Viewing score:
+Wildlife Score:
 </b>
 
-${score}/100
+${row["Wildlife Score"]}/100
 
 
 <br><br>
@@ -524,6 +511,16 @@ Forecast:
 </b>
 
 ${row.Forecast}
+
+
+<br><br>
+
+
+<b>
+Special Sightings Value:
+</b>
+
+${row["Wow Factor"]}/100
 
 
 <br><br>
@@ -553,21 +550,6 @@ ${row.Season}
 `
 
 );
-
-
-
-
-array.push(marker);
-
-
-allLayers.push(marker);
-
-
-
-}
-
-
-
 
 
 
